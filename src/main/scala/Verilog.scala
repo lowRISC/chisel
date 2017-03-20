@@ -551,10 +551,8 @@ class VerilogBackend extends Backend {
     val file = "32'h80000001"
     (List(if_not_synthesis,
     "  if(", emitRef(a.reset), ") ", emitRef(a), " <= 1'b1;\n",
-    "  if(!", emitRef(a.cond), " && ", emitRef(a), " && !", emitRef(a.reset), ") begin\n",
-    "    $fwrite(", file, ", ", CString("ASSERTION FAILED: %s\n"), ", ", CString(a.message), ");\n",
-    "    $fatal;\n",
-    "  end\n",
+    "  assert(", emitRef(a.cond), " || !", emitRef(a), " || ", emitRef(a.reset), ") else\n",
+    "    $fatal(1, ", CString("ASSERTION FAILED: %s\n"), ", ", CString(a.message), ");\n",
     endif_not_synthesis) addString (new StringBuilder)).result
   }
 
@@ -739,7 +737,7 @@ class VerilogBackend extends Backend {
     findConsumers(c)
 
     val n = Driver.appendString(Some(c.name),Driver.chiselConfigClassName)
-    val out = createOutputFile(n + ".v")
+    val out = createOutputFile(n + ".sv")
     doCompile(c, out, 0)
     ChiselError.checkpoint()
     out.close()
@@ -764,7 +762,7 @@ class VerilogBackend extends Backend {
     val ccFlags = List("-I$VCS_HOME/include", "-I" + dir, "-fPIC", "-std=c++11") mkString " "
     val vcsFlags = List("-full64", "-quiet", "-timescale=1ns/1ps", "-debug_pp", "-Mdir=" + n + ".csrc",
       "+vcs+lic+wait", "+v2k", "+vpi", "+define+CLOCK_PERIOD=1", "+vcs+initreg+random") mkString " "
-    val vcsSrcs = List(n + ".v", n + "-harness.v") mkString " "
+    val vcsSrcs = List(n + ".sv", n + "-harness.v") mkString " "
     val cmd = List("cd", dir, "&&", "vcs", vcsFlags, "-P", "vpi.tab", "vpi.o", "-o", n, vcsSrcs) mkString " "
     cc(dir, "vpi", ccFlags)
     if (!run(cmd)) throw new RuntimeException("vcs command failed")
